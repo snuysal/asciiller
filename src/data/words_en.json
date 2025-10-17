@@ -1,0 +1,15 @@
+{
+"version": 1,
+"language": "en",
+"buckets": [
+{ "id": "A", "minLen": 3, "maxLen": 5, "words": ["sun", "cat", "drum",
+"glow", "mint", "zap", "ring", "lift", "calm", "brisk"] },
+{ "id": "B", "minLen": 5, "maxLen": 7, "words": ["planet", "letter",
+"sprint", "cobalt", "marble", "nectar", "ripple", "bundle", "scarlet",
+"gadget"] },
+{ "id": "C", "minLen": 7, "maxLen": 10, "words": ["gravity", "cascade",
+"lanterns", "harmonic", "treasure", "protein", "windless", "paprika",
+"overcast", "granular"] }
+],
+"blacklist": []
+}
