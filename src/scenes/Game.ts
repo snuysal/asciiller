@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import * as CONST from "../game/const";
 import { rng as defaultRng } from "../game/rng";
-import { pick } from "../game/words";
+import { pick, type BucketId } from "../game/words";
 import { updateAccuracy, type ScoreState } from "../game/scoring";
 
 export default class Game extends Phaser.Scene {
@@ -9,57 +9,122 @@ export default class Game extends Phaser.Scene {
     private timeElapsed = 0;
     private scoreState: ScoreState = { score: 0, correct: 0, errors: 0, streak: 0 };
     private rng = defaultRng;
+
     private currentWord?: { text: Phaser.GameObjects.BitmapText, word: string, index: number };
 
-    constructor() { super("Game");}
+    private uiScore!: Phaser.GameObjects.BitmapText;
+    private uiLives!: Phaser.GameObjects.BitmapText
+    private uiAccuracy!: Phaser.GameObjects.BitmapText;
+    private uiTime!: Phaser.GameObjects.BitmapText;
+
+    private ended: boolean = false;
+
+    constructor() { super("Game"); }
+
+    init() {
+        this.ended = false;
+        this.timeElapsed = 0;
+        this.lives = CONST.LIVES;
+        this.scoreState = { score: 0, correct: 0, errors: 0, streak: 0 };
+    }
 
     create() {
         this.add.image(480, 270, "arena").setAlpha(0.15);
-        this.add.bitmapText(16, 16, "bm", "Score: 0", 24).setName("score");
-        this.add.bitmapText(16, 48, "bm", `Lives: ${this.lives}`, 24).setName("lives");
-        this.add.bitmapText(16, 80, "bm", "Accuracy: 100%", 24).setName("accuracy");
+        this.makeHUD();
+        this.bindInput();
+        this.spawnNextWord(this.getCurrentBucket());
+        this.refreshHUD();
+    }
 
-        const word = pick("A", this.rng);
-        const txt = this.add.bitmapText(480, 270, "bm", word, 36).setOrigin(0.5);
-        this.currentWord = { text: txt, word, index: 0 };
+    update(_time: number, delta: number) {
+        if (this.ended) return;
 
+        this.timeElapsed += delta / 1000;
+        this.uiTime.setText(`Time: ${this.timeElapsed.toFixed(1)}s`);
+
+        if (CONST.GAME.DURATION_SEC > 0 && this.timeElapsed >= CONST.GAME.DURATION_SEC) {
+            this.endRun();
+            return;
+        }
+        if (CONST.GAME.END_ON_STREAK > 0 && this.scoreState.streak >= CONST.GAME.END_ON_STREAK) {
+            this.endRun();
+            return;
+        }
+    }
+
+    private makeHUD() {
+        const { X, Y_STEP, FONT_KEY, HUD_SIZE } = CONST.HUD;
+        this.uiScore = this.add.bitmapText(X, 16, FONT_KEY, "Score: 0", HUD_SIZE).setName("score");
+        this.uiLives = this.add.bitmapText(X, 16 + Y_STEP, FONT_KEY, `Lives: ${this.lives}`, HUD_SIZE).setName("lives");
+        this.uiAccuracy = this.add.bitmapText(X, 16 + Y_STEP * 2, FONT_KEY, "Accuracy: 100%", HUD_SIZE).setName("accuracy");
+        this.uiTime = this.add.bitmapText(X, 16 + Y_STEP * 3, FONT_KEY, "Time: 0.0s", HUD_SIZE).setName("time");
+    }
+
+    private bindInput() {
         this.input.keyboard?.on("keydown", (ev: KeyboardEvent) => {
             const ch = ev.key.toLowerCase();
-            if (!/^[a-z]$/.test(ch)) return
-            if (!this.currentWord) return
-
-            const expected = this.currentWord.word[this.currentWord.index];
-            if (ch === expected) {
-                this.sound.play("type_ok", { volume: 0.4 });
-                this.currentWord.index++;
-                this.scoreState.correct++;
-                this.scoreState.streak++;
-                this.currentWord.text.setText(
-                    this.currentWord.word.slice(0, this.currentWord.index).toUpperCase() +
-                    this.currentWord.word.slice(this.currentWord.index)
-                );
-                if (this.currentWord.index >= this.currentWord.word.length) {
-                    this.sound.play("kill", {volume: 0.4});
-                    this.scoreState.score += CONST.SCORE_PER_LETTER * this.currentWord.word.length;
-                    this.currentWord.text.destroy();
-                    const tier = this.timeElapsed <20 ? "A" : this.timeElapsed < 40 ? "B" : "C";
-                    const next = pick(tier as any, this.rng);
-                    const txt2= this.add.bitmapText(480, 270, "bm", next, 36).setOrigin(0.5);
-                    this.currentWord = { text: txt2, word: next, index: 0 };
-                }
-            } else {
-                this.sound.play("type_bad", { volume: 0.4 });
-                this.scoreState.errors++;
-                this.scoreState.streak = Math.floor(this.scoreState.streak * 0.7);
-                this.cameras.main.shake(50, 0.002);
-            }
-
-            const acc = updateAccuracy(this.scoreState);
-            (this.children.getByName("score") as Phaser.GameObjects.BitmapText).setText(`Score: ${this.scoreState.score}`);
-            (this.children.getByName("accuracy") as Phaser.GameObjects.BitmapText).setText("Accuracy: " + Math.round(acc*100) + "%");
+            if (!/^[a-z]$/.test(ch)) return;
+            if (!this.currentWord) return;
+            this.onChar(ch);
         });
     }
-    update(time: number, delta: number) {
-        this.timeElapsed += delta / 1000;
+
+    private onChar(ch: string) {
+        const cw = this.currentWord!;
+        const expected = cw.word[cw.index];
+
+        if (ch === expected) {
+            this.sound.play("type_ok", { volume: CONST.SFX.TYPE_OK });
+            cw.index++;
+            this.scoreState.correct++;
+            this.scoreState.streak++;
+            cw.text.setText(
+                cw.word.slice(0, cw.index).toUpperCase() +
+                cw.word.slice(cw.index)
+            );
+
+            if (cw.index >= cw.word.length) this.onWordCompleted();
+        } else {
+            this.sound.play("type_bad", { volume: CONST.SFX.TYPE_BAD });
+            this.scoreState.errors++;
+            this.scoreState.streak = 0;
+            this.cameras.main.shake(50, 0.002);
+        }
+        this.refreshHUD();
+    }
+
+    private onWordCompleted() {
+        this.sound.play("kill", { volume: CONST.SFX.KILL });
+        this.scoreState.score += CONST.SCORE_PER_LETTER * this.currentWord!.word.length;
+        this.currentWord!.text.destroy();
+        this.currentWord = undefined;
+
+        this.time.delayedCall(80, () => this.spawnNextWord(this.getCurrentBucket()));
+    }
+
+    private spawnNextWord(bucket: BucketId) {
+        const word = pick(bucket, this.rng);
+        const txt = this.add.bitmapText(480, 270, CONST.HUD.FONT_KEY, word, 36).setOrigin(0.5);
+        this.currentWord = { text: txt, word, index: 0 };
+    }
+
+    private getCurrentBucket(): BucketId {
+        const [b1, b2] = CONST.GAME.TIER_BOUNDS;
+        if (this.timeElapsed < b1) return "A";
+        if (this.timeElapsed < b2) return "B";
+        return "C";
+    }
+
+    private refreshHUD() {
+        const acc = updateAccuracy(this.scoreState);
+        this.uiScore.setText(`Score: ${this.scoreState.score}`);
+        this.uiAccuracy.setText("Accuracy: " + Math.round(acc * 100) + "%");
+        this.uiLives.setText(`Lives: ${this.lives}`);
+    }
+
+    private endRun() {
+        if (this.ended) return;
+        this.ended = true;
+        this.scene.start("Results", { scoreState: this.scoreState });
     }
 }
