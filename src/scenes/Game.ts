@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import * as CONST from "../game/const";
 import { rng as defaultRng } from "../game/rng";
-import { pick, type BucketId } from "../game/words";
+import { pick, type BucketId, type CurrentWord } from "../game/words";
 import { updateAccuracy, type ScoreState } from "../game/scoring";
 
 export default class Game extends Phaser.Scene {
@@ -10,14 +10,14 @@ export default class Game extends Phaser.Scene {
     private scoreState: ScoreState = { score: 0, correct: 0, errors: 0, streak: 0 };
     private rng = defaultRng;
 
-    private currentWord?: { text: Phaser.GameObjects.BitmapText, word: string, index: number };
+    private currentWord?: CurrentWord<Phaser.GameObjects.BitmapText>;
 
     private uiScore!: Phaser.GameObjects.BitmapText;
     private uiLives!: Phaser.GameObjects.BitmapText
     private uiAccuracy!: Phaser.GameObjects.BitmapText;
     private uiTime!: Phaser.GameObjects.BitmapText;
 
-    private ended: boolean = false;
+    private ended!: boolean;
 
     constructor() { super("Game"); }
 
@@ -52,6 +52,10 @@ export default class Game extends Phaser.Scene {
         }
     }
 
+    shutdown() {
+        this.input.keyboard?.removeAllListeners();
+    }
+
     private makeHUD() {
         const { X, Y_STEP, FONT_KEY, HUD_SIZE } = CONST.HUD;
         this.uiScore = this.add.bitmapText(X, 16, FONT_KEY, "Score: 0", HUD_SIZE).setName("score");
@@ -73,24 +77,29 @@ export default class Game extends Phaser.Scene {
         const cw = this.currentWord!;
         const expected = cw.word[cw.index];
 
-        if (ch === expected) {
-            this.sound.play("type_ok", { volume: CONST.SFX.TYPE_OK });
-            cw.index++;
-            this.scoreState.correct++;
-            this.scoreState.streak++;
-            cw.text.setText(
-                cw.word.slice(0, cw.index).toUpperCase() +
-                cw.word.slice(cw.index)
-            );
-
-            if (cw.index >= cw.word.length) this.onWordCompleted();
-        } else {
-            this.sound.play("type_bad", { volume: CONST.SFX.TYPE_BAD });
-            this.scoreState.errors++;
-            this.scoreState.streak = 0;
-            this.cameras.main.shake(50, 0.002);
-        }
+        if (ch === expected) this.onTypeOk(cw);
+        else this.onTypeBad();
         this.refreshHUD();
+    }
+
+    private onTypeOk(currentWord: CurrentWord<Phaser.GameObjects.BitmapText>) {
+        this.sound.play("type_ok", { volume: CONST.SFX.TYPE_OK });
+        currentWord.index++;
+        this.scoreState.correct++;
+        this.scoreState.streak++;
+        currentWord.text.setText(
+            currentWord.word.slice(0, currentWord.index).toUpperCase() +
+            currentWord.word.slice(currentWord.index)
+        );
+
+        if (currentWord.index >= currentWord.word.length) this.onWordCompleted();
+    }
+
+    private onTypeBad() {
+        this.sound.play("type_bad", { volume: CONST.SFX.TYPE_BAD });
+        this.scoreState.errors++;
+        this.scoreState.streak = 0;
+        this.cameras.main.shake(50, 0.002);
     }
 
     private onWordCompleted() {

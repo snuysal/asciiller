@@ -2,6 +2,7 @@ import data from "../data/words_en.json";
 import type { RNG } from "./rng";
 
 export type BucketId = "A" | "B" | "C";
+export type CurrentWord<TTEXT> = { text: TTEXT; word: string; index: number };
 const buckets = new Map<BucketId, string[]>(data.buckets.map((bucket:any) => [bucket.id, bucket.words]));
 const blacklist = new Set<string>(data.blacklist || []);
 
