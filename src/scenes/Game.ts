@@ -17,6 +17,7 @@ export default class Game extends Phaser.Scene {
     private uiAccuracy!: Phaser.GameObjects.BitmapText;
     private uiTime!: Phaser.GameObjects.BitmapText;
 
+    private longestStreak = 0;
     private ended!: boolean;
 
     constructor() { super("Game"); }
@@ -26,6 +27,7 @@ export default class Game extends Phaser.Scene {
         this.timeElapsed = 0;
         this.lives = CONST.LIVES;
         this.scoreState = { score: 0, correct: 0, errors: 0, streak: 0 };
+        this.longestStreak = 0;
     }
 
     create() {
@@ -87,6 +89,8 @@ export default class Game extends Phaser.Scene {
         currentWord.index++;
         this.scoreState.correct++;
         this.scoreState.streak++;
+        if (this.scoreState.streak > this.longestStreak) this.longestStreak = this.scoreState.streak;
+
         currentWord.text.setText(
             currentWord.word.slice(0, currentWord.index).toUpperCase() +
             currentWord.word.slice(currentWord.index)
@@ -134,6 +138,12 @@ export default class Game extends Phaser.Scene {
     private endRun() {
         if (this.ended) return;
         this.ended = true;
-        this.scene.start("Results", { scoreState: this.scoreState });
+
+        const accuracy = updateAccuracy(this.scoreState);
+        this.scene.start("Results", { 
+            score: this.scoreState.score,
+            accuracy,
+            longestStreak: this.longestStreak
+         });
     }
 }
