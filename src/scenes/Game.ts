@@ -3,6 +3,7 @@ import * as CONST from "../game/const";
 import { rng as defaultRng } from "../game/rng";
 import { pick, type BucketId, type CurrentWord } from "../game/words";
 import { updateAccuracy, type ScoreState } from "../game/scoring";
+import { options } from "../game/options";
 
 export default class Game extends Phaser.Scene {
     private lives = CONST.LIVES;
@@ -32,6 +33,7 @@ export default class Game extends Phaser.Scene {
 
     create() {
         this.add.image(480, 270, "arena").setAlpha(0.15);
+        this.sound.mute = options.mute;
         this.makeHUD();
         this.bindInput();
         this.spawnNextWord(this.getCurrentBucket());
@@ -67,6 +69,11 @@ export default class Game extends Phaser.Scene {
     }
 
     private bindInput() {
+        this.input.keyboard?.on("keydown-ESC", () => {
+            if (this.ended) return;
+            this.scene.pause();
+            this.scene.launch("Pause");
+        });
         this.input.keyboard?.on("keydown", (ev: KeyboardEvent) => {
             const ch = ev.key.toLowerCase();
             if (!/^[a-z]$/.test(ch)) return;
