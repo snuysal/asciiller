@@ -75,10 +75,11 @@ export default class Game extends Phaser.Scene {
             this.scene.launch("Pause");
         });
         this.input.keyboard?.on("keydown", (ev: KeyboardEvent) => {
-            const ch = ev.key.toLowerCase();
+            if (ev.repeat) return;
+            const ch = ev.key;
             if (!/^[a-z]$/.test(ch)) return;
             if (!this.currentWord) return;
-            this.onChar(ch);
+            this.onChar(ch.toLowerCase());
         });
     }
 
