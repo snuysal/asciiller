@@ -138,7 +138,7 @@ export default class Game extends Phaser.Scene {
 
     private refreshHUD() {
         const acc = updateAccuracy(this.scoreState);
-        this.uiScore.setText(`Score: ${this.scoreState.score}`);
+        this.uiScore.setText(`Score: ${this.scoreState.score.toLocaleString()}`);
         this.uiAccuracy.setText("Accuracy: " + Math.round(acc * 100) + "%");
         this.uiLives.setText(`Lives: ${this.lives}`);
     }
