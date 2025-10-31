@@ -120,7 +120,7 @@ export default class Game extends Phaser.Scene {
         this.currentWord!.text.destroy();
         this.currentWord = undefined;
 
-        this.time.delayedCall(80, () => this.spawnNextWord(this.getCurrentBucket()));
+        this.time.delayedCall(this.respawnDelayMS(), () => this.spawnNextWord(this.getCurrentBucket()));
     }
 
     private spawnNextWord(bucket: BucketId) {
@@ -148,10 +148,24 @@ export default class Game extends Phaser.Scene {
         this.ended = true;
 
         const accuracy = updateAccuracy(this.scoreState);
-        this.scene.start("Results", { 
+        this.scene.start("Results", {
             score: this.scoreState.score,
             accuracy,
             longestStreak: this.longestStreak
-         });
+        });
+    }
+
+    private respawnDelayMS(): number {
+        const t = Math.min(this.timeElapsed, CONST.RESPAWN.RAMP_SEC) / CONST.RESPAWN.RAMP_SEC;
+        const ease = 1 - Math.pow(1 - t, 2);
+        let base = CONST.RESPAWN.START_MS + (CONST.RESPAWN.END_MS - CONST.RESPAWN.START_MS) * ease;
+
+        const bonus = Math.min(this.scoreState.streak, 50) / 50;
+        base -= 60 * bonus;
+
+        if (CONST.RESPAWN.JITTER_MS) {
+            base += (Math.random() * 2 -1) * CONST.RESPAWN.JITTER_MS;
+        }
+        return Math.max(0, Math.round(base));
     }
 }

@@ -19,3 +19,10 @@ export const HUD = {
     FONT_KEY: "bm",
     HUD_SIZE: 24,
 };
+
+export const RESPAWN = {
+    START_MS: 420,
+    END_MS: 120,
+    RAMP_SEC: 60,
+    JITTER_MS:40,
+}
