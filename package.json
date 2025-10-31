@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "lucide": "^0.548.0",
     "phaser": "^3.90.0"
   },
   "devDependencies": {

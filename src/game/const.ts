@@ -1,8 +1,8 @@
 export const LIVES = 3;
-export const SCORE_PER_LETTER = 5;
+export const SCORE_PER_LETTER = 1000;
 
 export const GAME = {
-    DURATION_SEC: 5,
+    DURATION_SEC: 15,
     END_ON_STREAK: 0,
     TIER_BOUNDS: [20, 40],
 };
