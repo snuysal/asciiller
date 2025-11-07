@@ -17,14 +17,15 @@ export default class Game extends Phaser.Scene {
     private uiLives!: Phaser.GameObjects.BitmapText
     private uiAccuracy!: Phaser.GameObjects.BitmapText;
     private uiTime!: Phaser.GameObjects.BitmapText;
+    private uiMuteIcon?: Phaser.GameObjects.Image;
+    private uiPowerFill!: Phaser.GameObjects.Rectangle;
+    private uiPowerBg!: Phaser.GameObjects.Rectangle;
 
     private longestStreak = 0;
     private ended!: boolean;
 
     private power = 0;
     private powerReady = false;
-    private uiPowerFill!: Phaser.GameObjects.Rectangle;
-    private uiPowerBg!: Phaser.GameObjects.Rectangle;
 
     private damageOverlay!: Phaser.GameObjects.Rectangle;
     private errorLockMs = 0;
@@ -45,6 +46,7 @@ export default class Game extends Phaser.Scene {
         this.add.image(480, 270, "arena").setAlpha(0.15);
         this.sound.mute = options.mute;
         this.makeHUD();
+        this.updateMuteIcon()
         this.bindInput();
         this.spawnNextWord(this.getCurrentBucket());
         this.refreshHUD();
@@ -258,4 +260,19 @@ export default class Game extends Phaser.Scene {
         // ready resets automatically because power=0
     }
 
+    public updateMuteIcon() {
+        if (options.mute) {
+            if (!this.uiMuteIcon) {
+                this.uiMuteIcon = this.add.image(750, 500, "ui_muted")
+                    .setOrigin(1, 0)
+                    .setScrollFactor(0)
+                    .setAlpha(0.85)
+                    .setDepth(20)
+                    .setScale(0.1);
+            }
+        } else {
+            this.uiMuteIcon?.destroy();
+            this.uiMuteIcon = undefined;
+        }
+    }
 }

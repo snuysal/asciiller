@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { options } from "../game/options";
 import * as CONST from "../game/const";
+import Game from "./Game";
 
 export default class Pause extends Phaser.Scene {
     constructor() { super("Pause"); }
@@ -22,6 +23,9 @@ export default class Pause extends Phaser.Scene {
             const next = !this.sound.mute;
             this.sound.mute = next;
             options.mute = next;
+
+            const gameScene = this.scene.get("Game") as Game;
+            gameScene.updateMuteIcon();
         });
     }
 
