@@ -18,6 +18,10 @@ export const HUD = {
     Y_STEP: 32,
     FONT_KEY: "bm",
     HUD_SIZE: 24,
+    POWER_BAR_X: 500,
+    POWER_BAR_Y: 16,
+    POWER_BAR_WIDTH: 160,
+    POWER_BAR_HEIGHT: 15,
 };
 
 export const RESPAWN = {
@@ -25,4 +29,12 @@ export const RESPAWN = {
     END_MS: 120,
     RAMP_SEC: 60,
     JITTER_MS:40,
+}
+
+export const POWER = {
+    MAX: 100,
+    THRESHOLD: 100,
+    PER_LETTER: 2,
+    PER_WORD: 6,
+    MISS_PENALTY: 12,
 }

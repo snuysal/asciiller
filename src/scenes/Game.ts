@@ -21,6 +21,11 @@ export default class Game extends Phaser.Scene {
     private longestStreak = 0;
     private ended!: boolean;
 
+    private power = 0;
+    private powerReady = false;
+    private uiPowerFill!: Phaser.GameObjects.Rectangle;
+    private uiPowerBg!: Phaser.GameObjects.Rectangle;
+
     constructor() { super("Game"); }
 
     init() {
@@ -29,6 +34,8 @@ export default class Game extends Phaser.Scene {
         this.lives = CONST.LIVES;
         this.scoreState = { score: 0, correct: 0, errors: 0, streak: 0 };
         this.longestStreak = 0;
+        this.power = 0;
+        this.powerReady = false;
     }
 
     create() {
@@ -61,12 +68,28 @@ export default class Game extends Phaser.Scene {
     }
 
     private makeHUD() {
-        const { X, Y_STEP, FONT_KEY, HUD_SIZE } = CONST.HUD;
+        const { X, Y_STEP, FONT_KEY, HUD_SIZE, POWER_BAR_X, POWER_BAR_Y, POWER_BAR_WIDTH, POWER_BAR_HEIGHT } = CONST.HUD;
         this.uiScore = this.add.bitmapText(X, 16, FONT_KEY, "Score: 0", HUD_SIZE).setName("score");
         this.uiLives = this.add.bitmapText(X, 16 + Y_STEP, FONT_KEY, `Lives: ${this.lives}`, HUD_SIZE).setName("lives");
         this.uiAccuracy = this.add.bitmapText(X, 16 + Y_STEP * 2, FONT_KEY, "Accuracy: 100%", HUD_SIZE).setName("accuracy");
         this.uiTime = this.add.bitmapText(X, 16 + Y_STEP * 3, FONT_KEY, "Time: 0.0s", HUD_SIZE).setName("time");
+        this.uiPowerBg = this.add.rectangle(POWER_BAR_X, POWER_BAR_Y, POWER_BAR_WIDTH, POWER_BAR_HEIGHT, 0x22262e).setOrigin(1, 0);
+        this.uiPowerFill = this.add.rectangle(POWER_BAR_X - POWER_BAR_WIDTH, POWER_BAR_Y, 0, POWER_BAR_HEIGHT, 0x49d78a).setOrigin(0, 0);
     }
+
+    private setPower(v: number) {
+        const capped = Math.max(0, Math.min(CONST.POWER.MAX, v));
+        this.power = capped;
+        const pct = capped / CONST.POWER.MAX; // 0..1
+        const w = 160 * pct;
+        this.uiPowerFill.width = w;
+        // green → gold when ready
+        this.uiPowerFill.fillColor = (pct >= CONST.POWER.THRESHOLD / CONST.POWER.MAX) ? 0xffd54d : 0x49d78a;
+        this.powerReady = (capped >= CONST.POWER.THRESHOLD);
+    }
+
+    private addPower(delta: number) { this.setPower(this.power + delta); }
+
 
     private bindInput() {
         this.input.keyboard?.on("keydown-ESC", () => {
@@ -105,6 +128,8 @@ export default class Game extends Phaser.Scene {
         );
 
         if (currentWord.index >= currentWord.word.length) this.onWordCompleted();
+
+        this.addPower(CONST.POWER.PER_LETTER);
     }
 
     private onTypeBad() {
@@ -112,6 +137,8 @@ export default class Game extends Phaser.Scene {
         this.scoreState.errors++;
         this.scoreState.streak = 0;
         this.cameras.main.shake(50, 0.002);
+
+        this.addPower(-CONST.POWER.MISS_PENALTY);
     }
 
     private onWordCompleted() {
@@ -119,7 +146,10 @@ export default class Game extends Phaser.Scene {
         this.scoreState.score += CONST.SCORE_PER_LETTER * this.currentWord!.word.length;
         this.currentWord!.text.destroy();
         this.currentWord = undefined;
-
+        this.addPower(CONST.POWER.PER_WORD);
+        if (this.powerReady) {
+            this.triggerPowerBlast(); // placeholder (single-word era)
+        }
         this.time.delayedCall(this.respawnDelayMS(), () => this.spawnNextWord(this.getCurrentBucket()));
     }
 
@@ -164,8 +194,27 @@ export default class Game extends Phaser.Scene {
         base -= 60 * bonus;
 
         if (CONST.RESPAWN.JITTER_MS) {
-            base += (Math.random() * 2 -1) * CONST.RESPAWN.JITTER_MS;
+            base += (Math.random() * 2 - 1) * CONST.RESPAWN.JITTER_MS;
         }
         return Math.max(0, Math.round(base));
     }
+
+    private triggerPowerBlast() {
+        // consume the charge
+        this.setPower(0);
+
+        // juice: white flash + slight slowmo
+        this.cameras.main.flash(120, 255, 255, 255);
+        this.time.timeScale = 0.9;
+        this.time.delayedCall(200, () => { this.time.timeScale = 1; });
+
+        // reward: flat bonus (tune later)
+        this.scoreState.score += 100;
+
+        // sfx
+        // safePlay(this, "blast", {...}) // later, when you add a blast sound
+
+        // ready resets automatically because power=0
+    }
+
 }
