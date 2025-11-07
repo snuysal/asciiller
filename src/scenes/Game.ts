@@ -30,6 +30,8 @@ export default class Game extends Phaser.Scene {
     private damageOverlay!: Phaser.GameObjects.Rectangle;
     private errorLockMs = 0;
 
+    private bgm?: Phaser.Sound.BaseSound;
+
     // NEW: background reference
     private techBg!: Phaser.GameObjects.Image;
 
@@ -46,13 +48,18 @@ export default class Game extends Phaser.Scene {
     }
 
     create() {
-        // OLD:
-        // this.add.image(480, 270, "arena").setAlpha(0.15);
-
-        // NEW: procedural techno background
         this.createTechBackground();
 
         this.sound.mute = options.mute;
+        this.bgm = this.sound.add("bgm_main", {
+            loop: true,
+            volume: 0.4, // tweak to taste
+        });
+
+        if (!this.sound.mute) {
+            this.bgm.play();
+        }
+
         this.makeHUD();
         this.updateMuteIcon();
         this.bindInput();
@@ -176,7 +183,7 @@ export default class Game extends Phaser.Scene {
 
         currentWord.text.setText(
             currentWord.word.slice(0, currentWord.index).toUpperCase() +
-                currentWord.word.slice(currentWord.index)
+            currentWord.word.slice(currentWord.index)
         );
 
         if (currentWord.index >= currentWord.word.length) this.onWordCompleted();
@@ -266,6 +273,9 @@ export default class Game extends Phaser.Scene {
         this.ended = true;
 
         const accuracy = updateAccuracy(this.scoreState);
+        if (this.bgm) {
+            this.bgm.stop();
+        }
         this.scene.start("Results", {
             score: this.scoreState.score,
             accuracy,
