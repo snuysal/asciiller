@@ -26,6 +26,9 @@ export default class Game extends Phaser.Scene {
     private uiPowerFill!: Phaser.GameObjects.Rectangle;
     private uiPowerBg!: Phaser.GameObjects.Rectangle;
 
+    private damageOverlay!: Phaser.GameObjects.Rectangle;
+    private errorLockMs = 0;
+
     constructor() { super("Game"); }
 
     init() {
@@ -45,10 +48,16 @@ export default class Game extends Phaser.Scene {
         this.bindInput();
         this.spawnNextWord(this.getCurrentBucket());
         this.refreshHUD();
+
+        this.damageOverlay = this.add.rectangle(480, 270, 960, 540, 0xff0000, 1).setAlpha(0).setDepth(10);
     }
 
     update(_time: number, delta: number) {
         if (this.ended) return;
+
+        if (this.errorLockMs > 0) {
+            this.errorLockMs = Math.max(0, this.errorLockMs - delta);
+        }
 
         this.timeElapsed += delta / 1000;
         this.uiTime.setText(`Time: ${this.timeElapsed.toFixed(1)}s`);
@@ -133,12 +142,44 @@ export default class Game extends Phaser.Scene {
     }
 
     private onTypeBad() {
+        if (this.errorLockMs > 0) {
+            this.scoreState.errors++;
+            this.scoreState.streak = 0;
+            this.addPower(-CONST.POWER.MISS_PENALTY);
+            return;
+        }
+
+        this.errorLockMs = 120;
+
         this.sound.play("type_bad", { volume: CONST.SFX.TYPE_BAD });
         this.scoreState.errors++;
         this.scoreState.streak = 0;
-        this.cameras.main.shake(50, 0.002);
-
         this.addPower(-CONST.POWER.MISS_PENALTY);
+
+        this.cameras.main.shake(120, 0.004);
+
+        this.damageOverlay.setAlpha(0.45);
+        this.tweens.killTweensOf(this.damageOverlay);
+        this.tweens.add({
+            targets: this.damageOverlay,
+            alpha: 0,
+            duration: 140,
+            ease: "Quad.easeOut"
+        });
+
+        if (this.currentWord) {
+            const t = this.currentWord.text;
+            this.tweens.killTweensOf(t);
+            t.setScale(1);
+            this.tweens.add({
+                targets: t,
+                scaleX: 1.12,
+                scaleY: 0.88,
+                yoyo: true,
+                duration: 80,
+                ease: "Quad.easeOut"
+            });
+        }
     }
 
     private onWordCompleted() {
